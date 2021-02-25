@@ -178,6 +178,7 @@ class NormalizingFlowModel(nn.Module):
     def forward(self, x, context):
 
         if context is not None:
+            
             embedded_context = self._embedding_net(context)
             zs, log_det = self.flow.forward(x, context=embedded_context)
             prior_logprob = (
@@ -193,7 +194,15 @@ class NormalizingFlowModel(nn.Module):
         return zs, prior_logprob, log_det
 
     def backward(self, z, context):
-        xs, log_det = self.flow.backward(z, context=embedded_context)
+        
+        if context is not None:
+            
+            embedded_context = self._embedding_net(context)
+            xs, log_det = self.flow.backward(z, context=embedded_context)
+            
+        else:
+            xs, log_det = self.flow.backward(z, context=None)
+            
         return xs, log_det
 
     def sample(self, num_samples, context):
@@ -201,20 +210,17 @@ class NormalizingFlowModel(nn.Module):
         if context is not None:
             embedded_context = self._embedding_net(context)
             z = self.prior.sample(num_samples, context=embedded_context)
-        else:
-            z = self.prior.sample(num_samples)
-
-        if embedded_context is not None:
-            # Merge the context dimension with sample dimension in order to apply the transform.
             z = torchutils.merge_leading_dims(z, num_dims=2)
             embedded_context = torchutils.repeat_rows(
                 embedded_context, num_reps=num_samples
             )
-
-        xs, _ = self.flow.backward(z, context=embedded_context)
-
-        if embedded_context is not None:
-            # Split the context dimension from sample dimension.
-            xs = torchutils.split_leading_dim(xs, shape=[-1, num_samples])
+            xs, _ = self.flow.backward(z, context=embedded_context)
+            xs = torchutils.split_leading_dim(xs, shape=[-1, num_samples])   
+            
+        else:
+            z = self.prior.sample(num_samples)
+            xs, _ = self.flow.backward(z, context=None)
 
         return xs
+
+

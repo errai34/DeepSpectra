@@ -20,6 +20,8 @@ import sys
 import torch
 from torch import nn
 from torch import optim
+from torch.distributions.multivariate_normal import MultivariateNormal
+
 import sys
 import itertools
 
@@ -43,6 +45,9 @@ base_dist = ConditionalDiagonalNormal(shape=[2], context_encoder=nn.Linear(1, 2 
 # +
 dim = x.shape[-1]
 
+#mu, cov = torch.zeros(dim), torch.eye(dim)
+#base_dist = MultivariateNormal(mu, cov)
+
 nfs_flow = NSF_CL
 flows = [
     nfs_flow(dim=dim, context_features=1, K=8, B=3, hidden_dim=128) for _ in range(3)
@@ -57,7 +62,7 @@ model = NormalizingFlowModel(base_dist, flows)
 # +
 optimizer = optim.Adam(model.parameters())
 
-num_iter = 1000
+num_iter = 500
 for i in range(num_iter):
     x, y = datasets.make_moons(128, noise=0.1)
     x = torch.tensor(x, dtype=torch.float32)
@@ -88,4 +93,3 @@ for i in range(num_iter):
         plt.savefig("test.png")
 
 torch.save(model.state_dict(), f"model.pth")
-# -
