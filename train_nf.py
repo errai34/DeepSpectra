@@ -47,7 +47,7 @@ train_loader = torch.utils.data.DataLoader(spectra, batch_size=200,\
 
 model.train()
 print("Started training")
-for k in range(1000):
+for k in range(500):
     for batch_idx, data_batch in enumerate(train_loader):
         x = data_batch
         zs, prior_logprob, log_det = model(x)
@@ -62,7 +62,7 @@ for k in range(1000):
         print("Loss at step k =", str(k)+":", loss.item())
 
 
-path = f'../flow_results/model.pth'
+path = f'model.pth'
 torch.save(model.state_dict(), path)
 
 print("Hooray. You're done.")
