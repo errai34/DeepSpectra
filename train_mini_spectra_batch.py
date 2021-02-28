@@ -30,9 +30,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 if device.type == 'cuda':
     print(torch.cuda.get_device_name(0))
-    print('Memory Usage:')
-    print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
-    print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3,1), 'GB')
 
 elif device.type == "cpu":
     print('Using the cpu...')
@@ -74,7 +71,7 @@ train_loader = torch.utils.data.DataLoader(
 
 model.train()
 print("Started training")
-for k in range(200):
+for k in range(1000):
     for batch_idx, data_batch in enumerate(train_loader):
         x = data_batch.to(device)
         zs, prior_logprob, log_det = model(x)
@@ -104,7 +101,7 @@ z = z.detach().numpy()
 
 fig = plt.figure()
 
-for i in range(16):
+for i in range(5):
     plt.plot(z[i])
 
 fig.savefig("sample_output_mini_batch.png")
