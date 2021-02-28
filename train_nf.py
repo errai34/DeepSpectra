@@ -22,6 +22,7 @@ from nflib.spline_flows import NSF_AR, NSF_CL
 spectra = np.loadtxt('./data/spectra.csv')
 spectra = torch.Tensor(spectra)
 dim = spectra.shape[-1]
+print(dim)
 
 #choose prior here
 base_mu, base_cov = torch.zeros(dim), torch.eye(dim)
@@ -67,3 +68,21 @@ torch.save(model.state_dict(), path)
 
 print("Hooray. You're done.")
 print("Saved model to:", path)
+
+# +
+model.eval()
+
+zs = model.sample(50)
+z = zs[-1]
+z = z.detach().numpy()
+
+fig = plt.figure()
+
+for i in range(16):
+    plt.plot(z[i])
+    
+fig.savefig('sample_output.png')
+
+# -
+
+
