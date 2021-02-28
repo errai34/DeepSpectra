@@ -9,6 +9,7 @@ import torch.nn.init as init
 from torch import nn
 from torch import distributions
 from torch.distributions import (
+    Normal,
     MultivariateNormal,
     Uniform,
     TransformedDistribution,
@@ -25,6 +26,17 @@ from nflib.flows import (
 )
 from nflib.spline_flows import NSF_CL
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+if device.type == 'cuda':
+    print(torch.cuda.get_device_name(0))
+    print('Memory Usage:')
+    print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
+    print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3,1), 'GB')
+
+elif device.type == "cpu":
+    print('Using the cpu...')
+
 # choose data here
 spectra = np.loadtxt("./data/mini_batch_spectra_clean.csv")
 
@@ -38,7 +50,7 @@ print(spectra.shape)
 plt.plot(spectra[1])
 
 # choose prior here
-base_mu, base_cov = torch.zeros(dim), torch.eye(dim)
+base_mu, base_cov = torch.zeros(dim).to(device), torch.eye(dim).to(device)
 prior = MultivariateNormal(base_mu, base_cov)
 
 # configure the normalising flow
@@ -49,7 +61,7 @@ norms = [ActNorm(dim=dim) for _ in flows]
 flows = list(itertools.chain(*zip(norms, convs, flows)))
 
 # initialise the model
-model = NormalizingFlowModel(prior, flows)
+model = NormalizingFlowModel(prior, flows).to(device)
 
 # optimizer
 optimizer = optim.Adam(model.parameters(), lr=2e-4, weight_decay=0)  # todo tune WD
@@ -64,7 +76,7 @@ model.train()
 print("Started training")
 for k in range(200):
     for batch_idx, data_batch in enumerate(train_loader):
-        x = data_batch
+        x = data_batch.to(device)
         zs, prior_logprob, log_det = model(x)
         logprob = prior_logprob + log_det
         loss = -torch.sum(logprob)  # NLL
@@ -87,6 +99,7 @@ model.eval()
 
 zs = model.sample(50)
 z = zs[-1]
+z = z.to('cpu')
 z = z.detach().numpy()
 
 fig = plt.figure()
