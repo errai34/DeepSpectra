@@ -30,21 +30,17 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 if device.type == 'cuda':
     print(torch.cuda.get_device_name(0))
-
 elif device.type == "cpu":
     print('Using the cpu...')
 
 # choose data here
-spectra = np.loadtxt("./data/mini_batch_spectra_clean.csv")
+spectra = np.loadtxt("./data/jo_batch_spectra.csv")
 
 spectra = spectra[:, 1:]
 spectra = spectra.T
 spectra = torch.Tensor(spectra)
 dim = spectra.shape[-1]
 print(dim)
-
-print(spectra.shape)
-plt.plot(spectra[1])
 
 # choose prior here
 base_mu, base_cov = torch.zeros(dim).to(device), torch.eye(dim).to(device)
@@ -71,7 +67,7 @@ train_loader = torch.utils.data.DataLoader(
 
 model.train()
 print("Started training")
-for k in range(1000):
+for k in range(30000):
     for batch_idx, data_batch in enumerate(train_loader):
         x = data_batch.to(device)
         zs, prior_logprob, log_det = model(x)
@@ -82,11 +78,11 @@ for k in range(1000):
         loss.backward()
         optimizer.step()
 
-    if k % 100 == 0:
+    if k % 500 == 0:
         print("Loss at step k =", str(k) + ":", loss.item())
 
 
-path = f"model_mini_batch.pth"
+path = f"model_galah_batch.pth"
 torch.save(model.state_dict(), path)
 
 print("Hooray. You're done.")
@@ -94,10 +90,11 @@ print("Saved model to:", path)
 
 model.eval()
 
-zs = model.sample(50)
+zs = model.sample(10000)
 z = zs[-1]
 z = z.to('cpu')
 z = z.detach().numpy()
+np.savetxt('galah_zs.npy', z)
 
 fig = plt.figure()
 
