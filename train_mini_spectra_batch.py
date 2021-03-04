@@ -1,3 +1,4 @@
+
 import itertools
 import numpy as np
 import matplotlib.pyplot as plt
@@ -52,7 +53,7 @@ prior = MultivariateNormal(base_mu, base_cov)
 
 # configure the normalising flow
 nfs_flow = NSF_CL
-flows = [nfs_flow(dim=dim, K=8, B=3, hidden_dim=128) for _ in range(5)]
+flows = [nfs_flow(dim=dim, K=8, B=3, hidden_dim=128) for _ in range(10)]
 convs = [Invertible1x1Conv(dim=dim) for _ in flows]
 norms = [ActNorm(dim=dim) for _ in flows]
 flows = list(itertools.chain(*zip(norms, convs, flows)))
@@ -66,17 +67,17 @@ print("number of params: ", sum(p.numel() for p in model.parameters()))
 
 # train_loader
 train_loader = torch.utils.data.DataLoader(
-    spectra, batch_size=71, shuffle=True, pin_memory=True
+    spectra, batch_size=142, shuffle=True, pin_memory=True
 )
 
 model.train()
 print("Started training")
-for k in range(1000):
+for k in range(30000):
     for batch_idx, data_batch in enumerate(train_loader):
         x = data_batch.to(device)
         zs, prior_logprob, log_det = model(x)
         logprob = prior_logprob + log_det
-        loss = -torch.sum(logprob)  # NLL
+        loss = -torch.mean(logprob)  # NLL
 
         model.zero_grad()
         loss.backward()
@@ -94,7 +95,7 @@ print("Saved model to:", path)
 
 model.eval()
 
-zs = model.sample(50)
+zs = model.sample(500)
 z = zs[-1]
 z = z.to('cpu')
 z = z.detach().numpy()
@@ -104,4 +105,4 @@ fig = plt.figure()
 for i in range(5):
     plt.plot(z[i])
 
-fig.savefig("sample_output_mini_batch.png")
+fig.savefig("sample_output_mini_batch_1.png")
