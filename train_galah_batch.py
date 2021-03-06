@@ -67,7 +67,7 @@ train_loader = torch.utils.data.DataLoader(
 
 model.train()
 print("Started training")
-for k in range(30000):
+for k in range(20000):
     for batch_idx, data_batch in enumerate(train_loader):
         x = data_batch.to(device)
         zs, prior_logprob, log_det = model(x)
@@ -101,4 +101,4 @@ fig = plt.figure()
 for i in range(5):
     plt.plot(z[i])
 
-fig.savefig("sample_output_mini_batch.png")
+fig.savefig("sample_galah_batch..png")
