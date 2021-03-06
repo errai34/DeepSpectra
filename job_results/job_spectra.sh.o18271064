@@ -1,0 +1,13 @@
+
+======================================================================================
+                  Resource Usage on 2021-03-01 02:45:19:
+   Job Id:             18271064.gadi-pbs
+   Project:            y89
+   Exit Status:        1
+   Service Units:      19.97
+   NCPUs Requested:    12                     NCPUs Used: 12              
+                                           CPU Time Used: 00:33:15                                   
+   Memory Requested:   19.0GB                Memory Used: 2.75GB          
+   Walltime requested: 10:00:00            Walltime Used: 00:33:17        
+   JobFS requested:    20.0GB                 JobFS used: 0B              
+======================================================================================

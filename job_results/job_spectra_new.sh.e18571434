@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "train_mini_spectra_batch_new.py", line 73, in <module>
+    zs, prior_logprob, log_det = model(x)
+  File "/apps/pytorch/1.5.1/lib/python3.7/site-packages/torch/nn/modules/module.py", line 550, in __call__
+    result = self.forward(*input, **kwargs)
+  File "/scratch/y89/ic9132/DeepSpectra/nflib/flows.py", line 143, in forward
+    zs, log_det = self.flow.forward(x)
+  File "/scratch/y89/ic9132/DeepSpectra/nflib/flows.py", line 119, in forward
+    x, ld = flow.forward(x)
+  File "/scratch/y89/ic9132/DeepSpectra/nflib/spline_flows.py", line 176, in forward
+    upper, ld = unconstrained_RQS(upper, W, H, D, inverse=False, tail_bound=self.B)
+  File "/scratch/y89/ic9132/DeepSpectra/nflib/spline_flows.py", line 57, in unconstrained_RQS
+    min_derivative=min_derivative
+  File "/scratch/y89/ic9132/DeepSpectra/nflib/spline_flows.py", line 66, in RQS
+    if torch.min(inputs) < left or torch.max(inputs) > right:
+RuntimeError: invalid argument 1: cannot perform reduction function min on tensor with no elements because the operation does not have an identity at /jobfs/7854369.gadi-pbs/0/pytorch/1.5.1/source/pytorch/aten/src/THC/generic/THCTensorMathReduce.cu:64
