@@ -20,7 +20,7 @@ Improved Variational Inference with Inverse Autoregressive Flow, Kingma et al Ju
 https://arxiv.org/abs/1606.04934
 (IAF)
 
-Masked Autoregressive Flow for Density Estimation, Papamakarios et al. May 2017 
+Masked Autoregressive Flow for Density Estimation, Papamakarios et al. May 2017
 https://arxiv.org/abs/1705.07057
 "The advantage of Real NVP compared to MAF and IAF is that it can both generate data and estimate densities with one forward pass only, whereas MAF would need D passes to generate data and IAF would need D passes to estimate densities."
 (MAF)
@@ -37,6 +37,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
+from utils import torchutils
 
 from nf.nets import MLP
 
@@ -150,6 +151,7 @@ class NormalizingFlow(nn.Module):
 
     def backward(self, z, context):
         m, _ = z.shape
+#        m = z.shape[0]
         log_det = torch.zeros(m)
         xs = [z]
         for flow in self.flows[::-1]:
@@ -178,14 +180,16 @@ class NormalizingFlowModel(nn.Module):
     def forward(self, x, context):
 
         if context is not None:
-            
+
             embedded_context = self._embedding_net(context)
             zs, log_det = self.flow.forward(x, context=embedded_context)
-            prior_logprob = (
-                self.prior.log_prob(zs[-1], context=embedded_context)
-                .view(x.size(0), -1)
-                .sum(1)
-            )
+            prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1)
+
+#            prior_logprob = (
+#                self.prior.log_prob(zs[-1], context=embedded_context)
+#                .view(x.size(0), -1)
+#                .sum(1)
+#            )
 
         else:
             zs, log_det = self.flow.forward(x, context=None)
@@ -194,33 +198,32 @@ class NormalizingFlowModel(nn.Module):
         return zs, prior_logprob, log_det
 
     def backward(self, z, context):
-        
+
         if context is not None:
-            
+
             embedded_context = self._embedding_net(context)
             xs, log_det = self.flow.backward(z, context=embedded_context)
-            
+
         else:
             xs, log_det = self.flow.backward(z, context=None)
-            
+
         return xs, log_det
 
     def sample(self, num_samples, context):
 
         if context is not None:
             embedded_context = self._embedding_net(context)
-            z = self.prior.sample(num_samples, context=embedded_context)
-            z = torchutils.merge_leading_dims(z, num_dims=2)
-            embedded_context = torchutils.repeat_rows(
-                embedded_context, num_reps=num_samples
-            )
+            z = self.prior.sample(num_samples)
+            #z = self.prior.sample(num_samples, context=embedded_context)
+            #z = torchutils.merge_leading_dims(z, num_dims=2)
+            #embedded_context = torchutils.repeat_rows(
+            #    embedded_context, num_reps=num_samples[0]
+            #)
             xs, _ = self.flow.backward(z, context=embedded_context)
-            xs = torchutils.split_leading_dim(xs, shape=[-1, num_samples])   
-            
+            #xs = torchutils.split_leading_dim(xs, shape=[-1, num_samples])
+
         else:
             z = self.prior.sample(num_samples)
             xs, _ = self.flow.backward(z, context=None)
 
         return xs
-
-
