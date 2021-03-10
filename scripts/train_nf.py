@@ -94,4 +94,3 @@ for i in range(16):
 
 fig.savefig('sample_output_1.png')
 
-# -
