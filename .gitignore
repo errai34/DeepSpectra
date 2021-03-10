@@ -1,6 +1,7 @@
 # Data
 #/data/
 nf_beta
+*.pth
 
 #icloud stuff
 *.icloud
