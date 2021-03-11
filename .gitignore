@@ -5,6 +5,7 @@ nf_beta
 job_results
 *-pbs.log
 *sh.*
+legacy
 
 #icloud stuff
 *.icloud
