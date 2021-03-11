@@ -27,7 +27,7 @@ from nflib.flows import (
 )
 from nflib.spline_flows import NSF_CL
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 if device.type == 'cuda':
     print(torch.cuda.get_device_name(0))
@@ -40,9 +40,8 @@ spectra = np.loadtxt("./data/apogee_batch_Xtrain.csv")
 spectra = spectra.T
 print(spectra.shape)
 
-# lower the dimensionality for the purpose of testing
-
-spectra=spectra[:,1:]
+#use even number of dimensions
+spectra = spectra[:, 1:]
 spectra = torch.Tensor(spectra)
 dim = spectra.shape[-1]
 print(dim)
@@ -61,19 +60,19 @@ flows = list(itertools.chain(*zip(norms, convs, flows)))
 # initialise the model
 model = NormalizingFlowModel(prior, flows)
 
-if torch.cuda.device_count() > 1:
-  print("Let's use", torch.cuda.device_count(), "GPUs!")
-  model = nn.DataParallel(model)
+#if torch.cuda.device_count() > 1:
+#  print("Let's use", torch.cuda.device_count(), "GPUs!")
+#  model = nn.DataParallel(model)
 
 model = model.to(device)
+#spectra = spectra.to(device)
 # optimizer
 optimizer = optim.Adam(model.parameters(), lr=2e-6, weight_decay=0)  # todo tune WD
 print("number of params: ", sum(p.numel() for p in model.parameters()))
 
 # train_loader
 train_loader = torch.utils.data.DataLoader(
-    spectra, batch_size=100, shuffle=True, pin_memory=True
-)
+    spectra, batch_size=100, shuffle=True, pin_memory=True)
 
 t0 = time()
 
@@ -110,11 +109,11 @@ np.savetxt('apogee_batch_elapsed_time.npy', elapsed_time)
 print("Hooray. You're done.")
 print("Saved model to:", path)
 
-# model.eval()
-# zs = model.sample(50)
-# z = zs[-1]
-# z = z.to('cpu')
-# z = z.detach().numpy()
-# fig = plt.figure()
-# for i in range(16):
+#model.eval()
+#zs = model.sample(50)
+#z = zs[-1]
+#z = z.to('cpu')
+#z = z.detach().numpy()
+#fig = plt.figure()
+#for i in range(16):
 #    plt.plot(z[i])

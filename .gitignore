@@ -6,6 +6,7 @@ job_results
 *-pbs.log
 *sh.*
 legacy
+legacy_gadi
 
 #icloud stuff
 *.icloud
