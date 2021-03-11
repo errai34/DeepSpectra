@@ -42,6 +42,7 @@ print(spectra.shape)
 
 # lower the dimensionality for the purpose of testing
 
+spectra=spectra[:,1:]
 spectra = torch.Tensor(spectra)
 dim = spectra.shape[-1]
 print(dim)
@@ -109,11 +110,11 @@ np.savetxt('apogee_batch_elapsed_time.npy', elapsed_time)
 print("Hooray. You're done.")
 print("Saved model to:", path)
 
-#model.eval()
-#zs = model.sample(50)
-#z = zs[-1]
-#z = z.to('cpu')
-#z = z.detach().numpy()
-#fig = plt.figure()
-#for i in range(16):
+# model.eval()
+# zs = model.sample(50)
+# z = zs[-1]
+# z = z.to('cpu')
+# z = z.detach().numpy()
+# fig = plt.figure()
+# for i in range(16):
 #    plt.plot(z[i])
