@@ -2,6 +2,8 @@
 #/data/
 nf_beta
 *.pth
+job_results
+*-pbs.log
 
 #icloud stuff
 *.icloud
