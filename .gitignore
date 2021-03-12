@@ -7,7 +7,7 @@ job_results
 *sh.*
 legacy
 legacy_gadi
-nflib_gpu
+#nflib_gpu
 
 #icloud stuff
 *.icloud
