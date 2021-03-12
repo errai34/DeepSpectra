@@ -65,8 +65,8 @@ if torch.cuda.device_count() > 1:
   print("Let's use", torch.cuda.device_count(), "GPUs!")
   model = nn.DataParallel(model)
 
-torch.cuda.set_device(gpu)
-model.cuda(gpu)
+torch.cuda.set_device(device)
+model.cuda(device)
 
 # optimizer
 optimizer = optim.Adam(model.parameters(), lr=2e-6, weight_decay=0)  # todo tune WD
@@ -88,7 +88,7 @@ for k in range(n_epochs):
         x = data_batch.cuda(non_blocking=True)
         zs, prior_logprob, log_det = model(x)
         logprob = prior_logprob + log_det
-        loss = -torch.mean(logprob).cuda(gpu)  # NLL
+        loss = -torch.mean(logprob).cuda(device)  # NLL
 
         model.zero_grad()
         loss.backward()
