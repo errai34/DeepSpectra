@@ -141,7 +141,7 @@ class NormalizingFlowModel(nn.Module):
 
     def forward(self, x):
         zs, log_det = self.flow.forward(x)
-        prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1)
+        prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1).to(device) #add to device here
         return zs, prior_logprob, log_det
 
     def backward(self, z):
