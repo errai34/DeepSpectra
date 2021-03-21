@@ -560,7 +560,7 @@ class Invertible1x1Conv(nn.Module):
         L = torch.tril(self.L, diagonal=-1) + torch.diag(torch.ones(self.dim).to(device))
         U = torch.triu(self.U, diagonal=1).to(device)
         W = self.P @ L @ (U + torch.diag(self.S))
-        return W
+        return W.to(device)
 
     def forward(self, x, x_cond):
         W = self._assemble_W()
