@@ -13,7 +13,7 @@ from torch.distributions.transformed_distribution import TransformedDistribution
 from torch.utils.data import DataLoader
 from torch.optim.optimizer import Optimizer, required
 
-device = 'cpu'
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 
 #==========================================================================================
