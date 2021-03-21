@@ -33,11 +33,17 @@ https://arxiv.org/abs/1912.02762
 (review paper)
 """
 
+# +
 import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
-from utils import torchutils
+import sys
+sys.path.append('../')
+
+from nf import utils
+from nf.utils import torchutils
+# -
 
 from nf.nets import MLP
 

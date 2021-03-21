@@ -2,9 +2,17 @@
 Various helper network modules
 """
 
+# +
 import torch
 from torch import nn
+import sys
 
+sys.path.append('../')
+
+from nf import utils
+
+
+# -
 
 class MLP(nn.Module):
     """ a simple 4-layer MLP """
