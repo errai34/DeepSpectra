@@ -48,6 +48,8 @@ from nf.utils import torchutils
 from nf.nets import MLP
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 class Invertible1x1Conv(nn.Module):
     """
     As introduced in Glow paper.
@@ -56,7 +58,7 @@ class Invertible1x1Conv(nn.Module):
     def __init__(self, dim):
         super().__init__()
         self.dim = dim
-        Q = torch.nn.init.orthogonal_(torch.randn(dim, dim))
+        Q = torch.nn.init.orthogonal_(torch.randn(dim, dim).to(device))
         P, L, U = torch.lu_unpack(*Q.lu())
         self.P = P  # remains fixed during optimization
         self.L = nn.Parameter(L)  # lower triangular portion
@@ -67,7 +69,7 @@ class Invertible1x1Conv(nn.Module):
 
     def _assemble_W(self):
         """ assemble W from its pieces (P, L, U, S) """
-        L = torch.tril(self.L, diagonal=-1) + torch.diag(torch.ones(self.dim))
+        L = torch.tril(self.L, diagonal=-1) + torch.diag(torch.ones(self.dim).to(device))
         U = torch.triu(self.U, diagonal=1)
         W = self.P @ L @ (U + torch.diag(self.S))
         return W
@@ -95,10 +97,10 @@ class AffineConstantFlow(nn.Module):
     def __init__(self, dim, scale=True, shift=True):
         super().__init__()
         self.s = (
-            nn.Parameter(torch.randn(1, dim, requires_grad=True)) if scale else None
+            nn.Parameter(torch.randn(1, dim, requires_grad=True).to(device)) if scale else None
         )
         self.t = (
-            nn.Parameter(torch.randn(1, dim, requires_grad=True)) if shift else None
+            nn.Parameter(torch.randn(1, dim, requires_grad=True).to(device)) if shift else None
         )
 
     def forward(self, x, context):
@@ -147,7 +149,7 @@ class NormalizingFlow(nn.Module):
     def forward(self, x, context):
 
         m, _ = x.shape
-        log_det = torch.zeros(m)
+        log_det = torch.zeros(m).to(device)
         zs = [x]
         for flow in self.flows:
             x, ld = flow.forward(x, context)
@@ -158,7 +160,7 @@ class NormalizingFlow(nn.Module):
     def backward(self, z, context):
         m, _ = z.shape
 #        m = z.shape[0]
-        log_det = torch.zeros(m)
+        log_det = torch.zeros(m).to(device)
         xs = [z]
         for flow in self.flows[::-1]:
             z, ld = flow.backward(z, context)
@@ -187,19 +189,20 @@ class NormalizingFlowModel(nn.Module):
 
         if context is not None:
 
-            embedded_context = self._embedding_net(context)
+            #embedded_context = self._embedding_net(context)
+            embedded_context = context
             zs, log_det = self.flow.forward(x, context=embedded_context)
-            prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1)
+            prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1).to(device)
 
-#            prior_logprob = (
-#                self.prior.log_prob(zs[-1], context=embedded_context)
-#                .view(x.size(0), -1)
-#                .sum(1)
-#            )
 
         else:
             zs, log_det = self.flow.forward(x, context=None)
-            prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1)
+            prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1).to(device) 
+            #prior_logprob = (
+             #  self.prior.log_prob(zs[-1], context=embedded_context)
+            #   .view(x.size(0), -1)
+            #   .sum(1)
+         #  )
 
         return zs, prior_logprob, log_det
 
@@ -207,7 +210,8 @@ class NormalizingFlowModel(nn.Module):
 
         if context is not None:
 
-            embedded_context = self._embedding_net(context)
+            #embedded_context = self._embedding_net(context)
+            embedded_context = context
             xs, log_det = self.flow.backward(z, context=embedded_context)
 
         else:
@@ -218,7 +222,8 @@ class NormalizingFlowModel(nn.Module):
     def sample(self, num_samples, context):
 
         if context is not None:
-            embedded_context = self._embedding_net(context)
+            #embedded_context = self._embedding_net(context)
+            embedded_context = context
             z = self.prior.sample(num_samples)
             #z = self.prior.sample(num_samples, context=embedded_context)
             #z = torchutils.merge_leading_dims(z, num_dims=2)
@@ -233,3 +238,5 @@ class NormalizingFlowModel(nn.Module):
             xs, _ = self.flow.backward(z, context=None)
 
         return xs
+
+#

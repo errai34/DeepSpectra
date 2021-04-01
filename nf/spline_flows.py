@@ -13,6 +13,8 @@ import torch.nn.functional as F
 
 from nf.nets import MLP
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 DEFAULT_MIN_BIN_WIDTH = 1e-3
 DEFAULT_MIN_BIN_HEIGHT = 1e-3
 DEFAULT_MIN_DERIVATIVE = 1e-3
@@ -195,7 +197,7 @@ class NSF_CL(nn.Module):
             self.g2 = base_network(context_features, (3 * K - 1) * dim // 2, hidden_dim)
 
     def forward(self, x, context):
-        log_det = torch.zeros(x.shape[0])
+        log_det = torch.zeros(x.shape[0]).to(device)
         lower, upper = x[:, : self.dim // 2], x[:, self.dim // 2 :]
 
         if context is not None:
@@ -229,7 +231,7 @@ class NSF_CL(nn.Module):
 
     def backward(self, z, context):
 
-        log_det = torch.zeros(z.shape[0])
+        log_det = torch.zeros(z.shape[0]).to(device)
         lower, upper = z[:, : self.dim // 2], z[:, self.dim // 2 :]
 
         if context is not None:
