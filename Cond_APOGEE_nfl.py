@@ -67,56 +67,55 @@ print('x dim is:', dim)
 cond_dim = y.shape[-1]
 print('y dim is:', cond_dim)
 
+# configure the normalising flow
 
-n_flows = 1
+n_units = 20
 
-n_dim = dim
-n_cond_dim = cond_dim
-n_units = 30
+nfs_flow = NSF_CL
+flows = [nfs_flow(dim=dim, context_features=cond_dim, K=8, B=3, hidden_dim=128) for _ in range(n_units)]
+convs = [Invertible1x1Conv(dim=dim) for _ in flows]
+norms = [ActNorm(dim=dim) for _ in flows]
+flows = list(itertools.chain(*zip(norms, convs, flows)))
 
-n_epochs = 2000
-batch_size = 200
-n_samples = x.shape[0]
+base_mu, base_cov = torch.zeros(dim).to(device), torch.eye(dim).to(device)
+prior = MultivariateNormal(base_mu, base_cov)
 
-n_steps = n_samples * n_epochs // batch_size
-print(f'n_steps = {n_steps}')
-
-flow = flow_cond.NormalizingFlow(n_dim, n_cond_dim, n_units)
-
+model = NormalizingFlowModel(prior, flows).to(device)
 # optimizer
-opt = optim.Adam(flow.parameters(), lr=5e-7)  # todo tune WD
+optimizer = optim.Adam(model.parameters(), lr=2e-7)  # todo tune WD
+print("number of params: ", sum(p.numel() for p in model.parameters()))
 
-flow = flow.to(device)
 # train_loader
 dataset = TensorDataset(x, y)
 
 # Create a data loader from the dataset
 # Type of sampling and batch size are specified at this step
-loader = DataLoader(dataset, batch_size=batch_size, shuffle=True, pin_memory=True) #this will give x, y per batch
+loader = DataLoader(dataset, batch_size=100, shuffle=True, pin_memory=True) #this will give x, y per batch
 
-#----------------------------------------------------------------------------------
-loss_history = []
-i = 0
+n_epochs = 5000
 
-for e in range(int(n_epochs)):
+loss_history=[]
+model.train()
+print("Started training")
+for k in range(n_epochs):
     for batch_idx, data_batch in enumerate(loader):
         x, y = data_batch
         x = x.to(device)
         y = y.to(device)
-
-        zs, prior_logprob, log_det = flow(x, y)
+        zs, prior_logprob, log_det = model(x, context=y) #definitely need to make this work better!? 
         logprob = prior_logprob + log_det
-        loss = -torch.mean(logprob)
+        loss = -torch.sum(logprob)  # NLL
 
-        flow.zero_grad()
+
+        model.zero_grad()
         loss.backward()
-        opt.step()
+        optimizer.step()
+        loss_history.append(loss)
 
-        loss_history.append(loss.item())
-        i = i + 1
+    if k % 100 == 0:
+        print("Loss at step k =", str(k) + ":", loss.item())
+    
+path = f"268_20_apogee.pth"
+torch.save(model.state_dict(), path)
 
-        if i%100 == 0:
-            print('we are at the i (out of 500)', i)
 
-
-torch.save(flow.state_dict(), 'mini_apogee_cond_268dim.pth')
