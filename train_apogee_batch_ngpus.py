@@ -35,15 +35,14 @@ elif device.type == "cpu":
     print('Using the cpu...')
 
 # choose data here
-spectra = np.loadtxt("./data/jo_batch_spectra.csv")
-
-spectra = spectra[:, 1:]
+spectra = np.loadtxt("./data/apogee_batch_Xtrain.csv")
 spectra = spectra.T
+print(spectra.shape)
 
-#lower the dimensionality for the purpose of testing
-
-spectra = spectra[:, :100]
+#use even number of dimensions. 268 in this case.
+spectra = spectra[:, ::9]
 spectra = torch.Tensor(spectra)
+spectra = spectra - 0.5
 dim = spectra.shape[-1]
 print(dim)
 
@@ -53,7 +52,7 @@ prior = MultivariateNormal(base_mu, base_cov)
 
 # configure the normalising flow
 nfs_flow = NSF_CL
-flows = [nfs_flow(dim=dim, device=device, K=8, B=3, hidden_dim=128) for _ in range(3)]
+flows = [nfs_flow(dim=dim, device=device, K=8, B=3, hidden_dim=128) for _ in range(20)]
 convs = [Invertible1x1Conv(dim=dim, device=device) for _ in flows]
 norms = [ActNorm(dim, device) for _ in flows]
 flows = list(itertools.chain(*zip(norms, convs, flows)))
@@ -91,10 +90,10 @@ for k in range(1000):
         loss.backward()
         optimizer.step()
 
-    if k % 500 == 0:
+    if k % 100 == 0:
         print("Loss at step k =", str(k) + ":", loss.item())
 
-path = f"model_galah_batch_ngpus.pth"
+path = f"apogee_batch_ngpus.pth"
 torch.save(model.state_dict(), path)
 
 print("Hooray. You're done.")
