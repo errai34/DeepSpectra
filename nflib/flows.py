@@ -21,23 +21,22 @@ from torch import nn
 
 from nflib.nets import LeafParam, MLP, ARMLP
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 class AffineConstantFlow(nn.Module):
     """
     Scales + Shifts the flow by (learned) constants per dimension.
     In NICE paper there is a Scaling layer which is a special case of this where t is None
     """
-    def __init__(self, dim, scale=True, shift=True):
+    def __init__(self, dim, device, scale=True, shift=True):
         super().__init__()
-        self.s = nn.Parameter(torch.randn(1, dim, requires_grad=True).to(device)) if scale else None
-        self.t = nn.Parameter(torch.randn(1, dim, requires_grad=True).to(device)) if shift else None
+        self.device = device
+        self.s = nn.Parameter(torch.randn(1, dim, requires_grad=True).to(self.device)) if scale else None
+        self.t = nn.Parameter(torch.randn(1, dim, requires_grad=True).to(self.device)) if shift else None
 
     def forward(self, x):
         s = self.s if self.s is not None else x.new_zeros(x.size())
         t = self.t if self.t is not None else x.new_zeros(x.size())
         z = x * torch.exp(s) + t
-        log_det = torch.sum(s, dim=1)
+        log_det = torch.sum(s, dim=1).to(self.device)
         return z, log_det
 
     def backward(self, z):
@@ -73,10 +72,11 @@ class Invertible1x1Conv(nn.Module):
     As introduced in Glow paper.
     """
 
-    def __init__(self, dim):
+    def __init__(self, dim, device):
         super().__init__()
         self.dim = dim
-        Q = nn.init.orthogonal_(torch.randn(dim, dim).to(device))
+        self.device = device
+        Q = nn.init.orthogonal_(torch.randn(dim, dim).to(self.device))
         P, L, U = torch.lu_unpack(*torch.lu(Q))
         self.register_buffer('P', P)
         self.L = nn.Parameter(L) # lower triangular portion
@@ -85,7 +85,7 @@ class Invertible1x1Conv(nn.Module):
 
     def _assemble_W(self):
         """ assemble W from its pieces (P, L, U, S) """
-        L = torch.tril(self.L, diagonal=-1) + torch.diag(torch.ones(self.dim).to(device))
+        L = torch.tril(self.L, diagonal=-1) + torch.diag(torch.ones(self.dim).to(self.L.device))
         U = torch.triu(self.U, diagonal=1)
         W = self.P @ L @ (U + torch.diag(self.S))
         return W
@@ -107,23 +107,24 @@ class Invertible1x1Conv(nn.Module):
 class NormalizingFlow(nn.Module):
     """ A sequence of Normalizing Flows is a Normalizing Flow """
 
-    def __init__(self, flows):
+    def __init__(self, flows, device):
         super().__init__()
         self.flows = nn.ModuleList(flows)
+        self.device = device
 
     def forward(self, x):
         m, _ = x.shape
-        log_det = torch.zeros(m).to(device)
+        log_det = torch.zeros(m).to(self.device)
         zs = [x]
         for flow in self.flows:
             x, ld = flow.forward(x)
-            log_det += ld
+            log_det += ld.to(self.device)
             zs.append(x)
         return zs, log_det
 
     def backward(self, z):
         m, _ = z.shape
-        log_det = torch.zeros(m).to(device)
+        log_det = torch.zeros(m).to(self.device)
         xs = [z]
         for flow in self.flows[::-1]:
             z, ld = flow.backward(z)
@@ -134,14 +135,16 @@ class NormalizingFlow(nn.Module):
 class NormalizingFlowModel(nn.Module):
     """ A Normalizing Flow Model is a (prior, flow) pair """
 
-    def __init__(self, prior, flows):
+    def __init__(self, prior, flows, device):
         super().__init__()
         self.prior = prior
-        self.flow = NormalizingFlow(flows)
+        self.flow = NormalizingFlow(flows, device)
+        self.device = device
 
     def forward(self, x):
         zs, log_det = self.flow.forward(x)
-        prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1).to(device) #add to device here
+        prior_logprob = self.prior.log_prob(zs[-1].to(self.device))
+        prior_logprob = prior_logprob.view(x.size(0), -1).sum(1).to(self.device) #add to device here
         return zs, prior_logprob, log_det
 
     def backward(self, z):

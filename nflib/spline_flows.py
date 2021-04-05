@@ -13,8 +13,6 @@ import torch.nn.functional as F
 
 from nflib.nets import MLP
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 DEFAULT_MIN_BIN_WIDTH = 1e-3
 DEFAULT_MIN_BIN_HEIGHT = 1e-3
 DEFAULT_MIN_DERIVATIVE = 1e-3
@@ -157,16 +155,16 @@ def RQS(inputs, unnormalized_widths, unnormalized_heights,
 class NSF_CL(nn.Module):
     """ Neural spline flow, coupling layer, [Durkan et al. 2019] """
 
-    def __init__(self, dim, K=5, B=3, hidden_dim=8, base_network=MLP):
+    def __init__(self, dim, device, K=5, B=3, hidden_dim=8, base_network=MLP):
         super().__init__()
         self.dim = dim
         self.K = K
         self.B = B
         self.f1 = base_network(dim // 2, (3 * K - 1) * dim // 2, hidden_dim)
         self.f2 = base_network(dim // 2, (3 * K - 1) * dim // 2, hidden_dim)
+        self.device = device
 
     def forward(self, x):
-        log_det = torch.zeros(x.shape[0]).to(device)
         lower, upper = x[:, :self.dim // 2], x[:, self.dim // 2:]
         out = self.f1(lower).reshape(-1, self.dim // 2, 3 * self.K - 1)
         W, H, D = torch.split(out, self.K, dim = 2)
@@ -174,6 +172,7 @@ class NSF_CL(nn.Module):
         W, H = 2 * self.B * W, 2 * self.B * H
         D = F.softplus(D)
         upper, ld = unconstrained_RQS(upper, W, H, D, inverse=False, tail_bound=self.B)
+        log_det = torch.zeros(x.shape[0]).to(ld.device)
         log_det += torch.sum(ld, dim = 1)
         out = self.f2(upper).reshape(-1, self.dim // 2, 3 * self.K - 1)
         W, H, D = torch.split(out, self.K, dim = 2)
@@ -185,7 +184,6 @@ class NSF_CL(nn.Module):
         return torch.cat([lower, upper], dim = 1), log_det
 
     def backward(self, z):
-        log_det = torch.zeros(z.shape[0]).to(device)
         lower, upper = z[:, :self.dim // 2], z[:, self.dim // 2:]
         out = self.f2(upper).reshape(-1, self.dim // 2, 3 * self.K - 1)
         W, H, D = torch.split(out, self.K, dim = 2)
@@ -193,6 +191,7 @@ class NSF_CL(nn.Module):
         W, H = 2 * self.B * W, 2 * self.B * H
         D = F.softplus(D)
         lower, ld = unconstrained_RQS(lower, W, H, D, inverse=True, tail_bound=self.B)
+        log_det = torch.zeros(z.shape[0]).to(ld.device)
         log_det += torch.sum(ld, dim = 1)
         out = self.f1(lower).reshape(-1, self.dim // 2, 3 * self.K - 1)
         W, H, D = torch.split(out, self.K, dim = 2)
