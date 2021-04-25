@@ -197,7 +197,7 @@ class NSF_CL(nn.Module):
             self.g2 = base_network(context_features, (3 * K - 1) * dim // 2, hidden_dim)
 
     def forward(self, x, context):
-        log_det = torch.zeros(x.shape[0]).to(ld.device)
+
         lower, upper = x[:, : self.dim // 2], x[:, self.dim // 2 :]
 
         if context is not None:
@@ -212,6 +212,7 @@ class NSF_CL(nn.Module):
         W, H = 2 * self.B * W, 2 * self.B * H
         D = F.softplus(D)
         upper, ld = unconstrained_RQS(upper, W, H, D, inverse=False, tail_bound=self.B)
+        log_det = torch.zeros(x.shape[0]).to(ld.device)
         log_det += torch.sum(ld, dim=1)
 
         if context is not None:
@@ -231,7 +232,7 @@ class NSF_CL(nn.Module):
 
     def backward(self, z, context):
 
-        log_det = torch.zeros(z.shape[0]).to(ld.device)
+
         lower, upper = z[:, : self.dim // 2], z[:, self.dim // 2 :]
 
         if context is not None:
@@ -246,6 +247,7 @@ class NSF_CL(nn.Module):
         W, H = 2 * self.B * W, 2 * self.B * H
         D = F.softplus(D)
         lower, ld = unconstrained_RQS(lower, W, H, D, inverse=True, tail_bound=self.B)
+        log_det = torch.zeros(z.shape[0]).to(ld.device)
         log_det += torch.sum(ld, dim=1)
 
         if context is not None:
