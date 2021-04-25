@@ -44,21 +44,19 @@ sys.path.append('../')
 from nf import utils
 from nf.utils import torchutils
 # -
-
 from nf.nets import MLP
-
-
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Invertible1x1Conv(nn.Module):
     """
     As introduced in Glow paper.
     """
 
-    def __init__(self, dim):
+    def __init__(self, dim, device):
         super().__init__()
         self.dim = dim
-        Q = torch.nn.init.orthogonal_(torch.randn(dim, dim).to(device))
+        self.device = device
+        Q = torch.nn.init.orthogonal_(torch.randn(dim, dim).to(self.device))
         P, L, U = torch.lu_unpack(*Q.lu())
         self.P = P  # remains fixed during optimization
         self.L = nn.Parameter(L)  # lower triangular portion
@@ -69,7 +67,7 @@ class Invertible1x1Conv(nn.Module):
 
     def _assemble_W(self):
         """ assemble W from its pieces (P, L, U, S) """
-        L = torch.tril(self.L, diagonal=-1) + torch.diag(torch.ones(self.dim).to(device))
+        L = torch.tril(self.L, diagonal=-1) + torch.diag(torch.ones(self.dim).to(self.L.device))
         U = torch.triu(self.U, diagonal=1)
         W = self.P @ L @ (U + torch.diag(self.S))
         return W
@@ -94,8 +92,9 @@ class AffineConstantFlow(nn.Module):
     In NICE paper there is a Scaling layer which is a special case of this where t is None
     """
 
-    def __init__(self, dim, scale=True, shift=True):
+    def __init__(self, dim, device, scale=True, shift=True):
         super().__init__()
+        self.device = device
         self.s = (
             nn.Parameter(torch.randn(1, dim, requires_grad=True).to(device)) if scale else None
         )
@@ -107,7 +106,7 @@ class AffineConstantFlow(nn.Module):
         s = self.s if self.s is not None else x.new_zeros(x.size())
         t = self.t if self.t is not None else x.new_zeros(x.size())
         z = x * torch.exp(s) + t
-        log_det = torch.sum(s, dim=1)
+        log_det = torch.sum(s, dim=1).to(self.device)
         return z, log_det
 
     def backward(self, z, context):
@@ -142,25 +141,26 @@ class ActNorm(AffineConstantFlow):
 class NormalizingFlow(nn.Module):
     """ A sequence of Normalizing Flows is a Normalizing Flow """
 
-    def __init__(self, flows):
+    def __init__(self, flows, device):
         super().__init__()
         self.flows = nn.ModuleList(flows)
+        self.device = device
 
     def forward(self, x, context):
 
         m, _ = x.shape
-        log_det = torch.zeros(m).to(device)
+        log_det = torch.zeros(m).to(self.device)
         zs = [x]
         for flow in self.flows:
             x, ld = flow.forward(x, context)
-            log_det += ld
+            log_det += ld.to(self.device)
             zs.append(x)
         return zs, log_det
 
     def backward(self, z, context):
         m, _ = z.shape
 #        m = z.shape[0]
-        log_det = torch.zeros(m).to(device)
+        log_det = torch.zeros(m).to(self.device)
         xs = [z]
         for flow in self.flows[::-1]:
             z, ld = flow.backward(z, context)
@@ -172,10 +172,10 @@ class NormalizingFlow(nn.Module):
 class NormalizingFlowModel(nn.Module):
     """ A Normalizing Flow Model is a (prior, flow) pair """
 
-    def __init__(self, prior, flows, embedding_net=None):
+    def __init__(self, prior, flows, device, embedding_net=None):
         super().__init__()
         self.prior = prior
-        self.flow = NormalizingFlow(flows)
+        self.flow = NormalizingFlow(flows, device)
 
         if embedding_net is not None:
             assert isinstance(
@@ -185,6 +185,8 @@ class NormalizingFlowModel(nn.Module):
         else:
             self._embedding_net = torch.nn.Identity()
 
+        self.device = device
+
     def forward(self, x, context):
 
         if context is not None:
@@ -192,12 +194,14 @@ class NormalizingFlowModel(nn.Module):
             #embedded_context = self._embedding_net(context)
             embedded_context = context
             zs, log_det = self.flow.forward(x, context=embedded_context)
-            prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1).to(device)
+            prior_logprob = self.prior.log_prob(zs[-1].to(self.device))
+            prior_logprob = prior_logprob.view(x.size(0), -1).sum(1).to(self.device)
 
 
         else:
             zs, log_det = self.flow.forward(x, context=None)
-            prior_logprob = self.prior.log_prob(zs[-1]).view(x.size(0), -1).sum(1).to(device) 
+            prior_logprob = self.prior.log_prob(zs[-1].to(self.device))
+            prior_logprob = prior_logprob.view(x.size(0), -1).sum(1).to(device)
             #prior_logprob = (
              #  self.prior.log_prob(zs[-1], context=embedded_context)
             #   .view(x.size(0), -1)
@@ -224,7 +228,7 @@ class NormalizingFlowModel(nn.Module):
         if context is not None:
             #embedded_context = self._embedding_net(context)
             embedded_context = context
-            z = self.prior.sample(num_samples)
+            z = self.prior.sample((num_samples,)) #changed frum num_samples simple
             #z = self.prior.sample(num_samples, context=embedded_context)
             #z = torchutils.merge_leading_dims(z, num_dims=2)
             #embedded_context = torchutils.repeat_rows(

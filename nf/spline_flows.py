@@ -13,12 +13,11 @@ import torch.nn.functional as F
 
 from nf.nets import MLP
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 DEFAULT_MIN_BIN_WIDTH = 1e-3
 DEFAULT_MIN_BIN_HEIGHT = 1e-3
 DEFAULT_MIN_DERIVATIVE = 1e-3
-
 
 def searchsorted(bin_locations, inputs, eps=1e-6):
     bin_locations[..., -1] += eps
@@ -182,7 +181,7 @@ class NSF_CL(nn.Module):
     """ Neural spline flow, coupling layer, [Durkan et al. 2019] """
 
     def __init__(
-        self, dim, context_features=None, K=5, B=3, hidden_dim=8, base_network=MLP
+        self, dim, device, context_features=None, K=5, B=3, hidden_dim=8, base_network=MLP
     ):
         super().__init__()
         self.dim = dim
@@ -190,6 +189,7 @@ class NSF_CL(nn.Module):
         self.B = B
         self.f1 = base_network(dim // 2, (3 * K - 1) * dim // 2, hidden_dim)
         self.f2 = base_network(dim // 2, (3 * K - 1) * dim // 2, hidden_dim)
+        self.device = device
 
         if context_features is not None:
 
@@ -197,7 +197,7 @@ class NSF_CL(nn.Module):
             self.g2 = base_network(context_features, (3 * K - 1) * dim // 2, hidden_dim)
 
     def forward(self, x, context):
-        log_det = torch.zeros(x.shape[0]).to(device)
+        log_det = torch.zeros(x.shape[0]).to(ld.device)
         lower, upper = x[:, : self.dim // 2], x[:, self.dim // 2 :]
 
         if context is not None:
@@ -231,7 +231,7 @@ class NSF_CL(nn.Module):
 
     def backward(self, z, context):
 
-        log_det = torch.zeros(z.shape[0]).to(device)
+        log_det = torch.zeros(z.shape[0]).to(ld.device)
         lower, upper = z[:, : self.dim // 2], z[:, self.dim // 2 :]
 
         if context is not None:
