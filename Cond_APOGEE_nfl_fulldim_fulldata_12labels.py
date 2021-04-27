@@ -13,7 +13,7 @@ from torch.distributions import (
 )
 from torch.nn.parameter import Parameter
 from torch.optim.optimizer import Optimizer, required
-import pandas as pd
+#import pandas as pd
 
 
 from nf.flows import (
@@ -42,20 +42,20 @@ elif device.type == "cpu":
     print('Using the cpu...')
 
 # +
-spectra = np.loadtxt('./data/apogee_batch_Xtrain_full.csv')
+spectra = np.loadtxt('./data/apogee_batch_Xtrain_full.csv')[:, :1000]
 spectra = spectra.T
 
 print(spectra.shape)
 # -
 
 #use even number of dimensions
-spectra = spectra[:, 1:]
+spectra = spectra[:, ::3]
 spectra = torch.Tensor(spectra)
 spectra = spectra - 0.5
 dim = spectra.shape[-1]
 print(dim)
 
-labels = np.loadtxt("./data/apogee_batch_ytrain_full.csv")
+labels = np.loadtxt("./data/apogee_batch_ytrain_full.csv")[:1000]
 labels.shape
 
 y = np.array([labels[:, 0], labels[:, 1], labels[:, 2], labels[:, 3], labels[:, 4], labels[:, 5], \
@@ -107,13 +107,18 @@ print("number of params: ", sum(p.numel() for p in model.parameters()))
 # train_loader
 dataset = TensorDataset(x, y)
 
+
 # Create a data loader from the dataset
 # Type of sampling and batch size are specified at this step
-loader = DataLoader(dataset, batch_size=100, shuffle=True, pin_memory=True) #this will give x, y per batch
+loader = DataLoader(dataset, batch_size=50, shuffle=True) #this will give x, y per batch
+del dataset
+del x
+import gc
+gc.collect()
+torch.cuda.empty_cache()
 
 n_epochs = 500
-
-loss_history=[]
+#loss_history=[]
 model.train()
 print("Started training")
 for k in range(n_epochs):
@@ -122,14 +127,15 @@ for k in range(n_epochs):
         x = x.to(device)
         y = y.to(device)
         zs, prior_logprob, log_det = model(x, context=y) #definitely need to make this work better!?
+        del x
+        del y
         logprob = prior_logprob + log_det
         loss = -torch.sum(logprob)  # NL
 
         model.zero_grad()
         loss.backward()
         optimizer.step()
-        loss_history.append(loss)
-
+ #       loss_history.append(float(loss))
     if k % 100 == 0:
         print("Loss at step k =", str(k) + ":", loss.item())
 
