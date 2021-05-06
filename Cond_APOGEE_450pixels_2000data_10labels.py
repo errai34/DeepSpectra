@@ -88,7 +88,7 @@ print('x dim is:', dim)
 cond_dim = y.shape[-1]
 print('y dim is:', cond_dim)
 
-n_units = 50
+n_units = 30
 
 nfs_flow = NSF_CL
 flows = [nfs_flow(dim=dim, device=device, context_features=cond_dim, K=8, B=3, hidden_dim=128) for _ in range(n_units)]
@@ -120,7 +120,7 @@ loader = DataLoader(dataset, batch_size=100, shuffle=True, pin_memory=True) #thi
 
 torch.cuda.empty_cache()
 
-n_epochs = 1000
+n_epochs = 500
 loss_history=[]
 model.train()
 print("Started training")
@@ -145,6 +145,6 @@ for k in range(n_epochs):
 torch.save({'epoch': n_epochs,
             'model_state_dict': model.state_dict(),
             'optimizer_state_dict': optimizer.state_dict()
-            }, 'cond_apogee_450pixels_2000data_10labels.pth')
+            }, 'cond_apogee_450pixels_2000data_10labels_sparse.pth')
 
-np.savetxt('cond_apogee_450pixels_2000data_10labels.npy',  loss_history)
+np.savetxt('cond_apogee_450pixels_2000data_10labels_sparse.npy',  loss_history)
