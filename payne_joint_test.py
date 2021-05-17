@@ -99,9 +99,12 @@ for k in range(n_epochs):
 t1 = time()
 print(f'Elapsed time: {t1-t0:.1f} s')
 
-path = f"model_payne_joint_test.pth"
-torch.save(model.state_dict(), path)
-np.savetxt('payne_joint_test.npy', loss_history)
+torch.save({'epoch': n_epochs,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict()
+            }, 'model_payne_joint_test_new.pth')
+
+np.savetxt('model_payne_joint_test_new.npy',  loss_history)
 
 
 
