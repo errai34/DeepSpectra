@@ -78,7 +78,7 @@ t0 = time()
 
 model.train()
 print("Started training")
-n_epochs = 100
+n_epochs = 20
 loss_history=[]
 
 for k in range(n_epochs):
@@ -99,12 +99,11 @@ for k in range(n_epochs):
 t1 = time()
 print(f'Elapsed time: {t1-t0:.1f} s')
 
-torch.save({'epoch': n_epochs,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict()
-            }, 'model_payne_joint_test_new.pth')
+# Specify a path to save to
+PATH = "model.pt"
 
-np.savetxt('model_payne_joint_test_new.npy',  loss_history)
+# Save
+torch.save(model.state_dict(), PATH)
 
 
 
