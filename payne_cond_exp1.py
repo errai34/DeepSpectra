@@ -141,3 +141,15 @@ PATH = "model_cond_exp1.pt"
 # Save
 torch.save(model.module.state_dict(), PATH)
 np.savetxt("loss_hist_cond_exp1.npy", loss_history)
+
+model.eval()
+zs = model.sample(1000) #sampling 1000 points from it....
+z = zs[-1]
+z = z.to('cpu')
+z = z.detach().numpy()
+fig = plt.figure(figsize=(14, 4))
+
+for i in range(10):
+    plt.plot(z[i])
+
+plt.savefig('model_cond_exp1.png')
