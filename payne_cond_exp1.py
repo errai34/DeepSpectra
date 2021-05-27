@@ -143,10 +143,17 @@ torch.save(model.module.state_dict(), PATH)
 np.savetxt("loss_hist_cond_exp1.npy", loss_history)
 
 model.eval()
-zs = model.sample(1000) #sampling 1000 points from it....
+cont = np.ones((100, 2))
+cont[:, 0] = 4.5
+cont[:, 1] = 2.1
+
+cont = torch.tensor(cont, dtype=torch.float32).reshape(-1, 2)
+
+zs = model.sample(100, context=cont)
 z = zs[-1]
 z = z.to('cpu')
 z = z.detach().numpy()
+
 fig = plt.figure(figsize=(14, 4))
 
 for i in range(10):
