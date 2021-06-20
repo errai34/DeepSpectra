@@ -40,7 +40,7 @@ elif device.type == "cpu":
 
 # choose data here
 # choose data here
-spectra = np.load("/content/drive/My Drive/DeepSpectra/DeepSpectra/data/X_train_payne_region_uncond.npy")
+spectra = np.load("./data/X_train_payne_region_uncond.npy")
 #spectra = np.load("/content/drive/My Drive/DeepSpectra/DeepSpectra/data/X_train_payne_region_cond_temp_logg.npy")
 spectra = spectra.T
 print(spectra.shape)
@@ -52,7 +52,7 @@ spectra = spectra - 0.5
 dim = spectra.shape[-1]
 print('spectra dim is', dim)
 print(spectra.shape)
-labels = np.load("/content/drive/My Drive/DeepSpectra/DeepSpectra/data/y_train_payne_region_uncond.npy")
+labels = np.load("./data/y_train_payne_region_uncond.npy")
 print('labels shape', labels.shape)
 
 # conditioning on teff, logg
@@ -129,7 +129,7 @@ t1 = time()
 print(f'Elapsed time: {t1-t0:.1f} s')
 
 #model = NormalizingFlowModel(prior, flows, device=device)
-PATH = "/content/drive/My Drive/DeepSpectra/DeepSpectra/joint_with_labels_exp2.pt"
+PATH = "./joint_with_labels_exp2.pt"
 # Save
 torch.save(model.module.state_dict(), PATH)
 
@@ -139,4 +139,4 @@ z = zs[-1]
 z = z.to('cpu')
 z = z.detach().numpy()
 
-np.save('/content/drive/My Drive/DeepSpectra/DeepSpectra/samples.npy', z, allow_pickle=True)
+np.save('./samples.npy', z, allow_pickle=True)
